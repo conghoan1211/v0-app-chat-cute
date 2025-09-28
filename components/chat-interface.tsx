@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Heart, Send, Smile, Star, ArrowLeft } from "lucide-react"
-import { subscribeToPush } from "@/lib/notifications"
 
 interface Message {
   id: string
@@ -18,94 +17,23 @@ interface Message {
 
 interface ChatInterfaceProps {
   onBack: () => void
-  chatId?: string
-  chatName?: string
-  partnerEmail?: string
-  userEmail?: string
 }
 
-export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, userEmail }: ChatInterfaceProps) {
+export default function ChatInterface({ onBack }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [socket, setSocket] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const messagesTopRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  // Load messages from API
-  const loadMessages = async (pageNum: number = 1, append: boolean = false) => {
-    if (!chatId) {
-      return;
-    }
-
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/messages?chatId=${chatId}&page=${pageNum}&limit=20`)
-      const data = await response.json()
-
-      if (data.success) {
-        const newMessages = data.messages.map((msg: any) => ({
-          id: msg.id,
-          text: msg.text,
-          sender: msg.sender === userEmail ? "me" : "partner",
-          timestamp: new Date(msg.timestamp),
-          type: msg.type || "text"
-        }))
-
-        if (append) {
-          setMessages(prev => [...newMessages, ...prev])
-        } else {
-          setMessages(newMessages)
-        }
-
-        setHasMore(data.pagination.hasNext)
-        setPage(pageNum)
-      }
-    } catch (error) {
-      console.error("Error loading messages:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Load more messages (for pagination)
-  const loadMoreMessages = () => {
-    if (hasMore && !loading) {
-      loadMessages(page + 1, true)
-    }
-  }
-
   useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  // Load initial messages when chatId changes
-  useEffect(() => {
-    if (chatId) {
-      loadMessages(1, false)
-    }
-  }, [chatId])
-
-  // Subscribe to push notifications when component mounts
-  useEffect(() => {
-    if (userEmail) {
-      subscribeToPush(userEmail).then(success => {
-        if (success) {
-          console.log('Push notifications enabled')
-        } else {
-          console.log('Push notifications not available')
-        }
-      })
-    }
-  }, [userEmail])
 
   useEffect(() => {
     const connectWebSocket = () => {
@@ -116,15 +44,6 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
           console.log("[v0] Connected to chat server")
           setSocket(ws)
           setIsConnected(true)
-
-          // Join the chat
-          if (chatId && userEmail) {
-            ws.send(JSON.stringify({
-              type: "join_chat",
-              chatId: chatId,
-              userEmail: userEmail
-            }))
-          }
         }
 
         ws.onmessage = (event) => {
@@ -133,7 +52,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
             const newMessage: Message = {
               id: data.id,
               text: data.text,
-              sender: data.sender === userEmail ? "me" : "partner",
+              sender: data.sender,
               timestamp: new Date(data.timestamp),
               type: data.type || "text",
             }
@@ -188,11 +107,6 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
       type: "text",
     }
 
-    const messageData = {
-      ...message,
-      sender: userEmail, // Gửi email thay vì "me"
-    }
-
     setMessages((prev) => [...prev, message])
     setNewMessage("")
 
@@ -201,39 +115,64 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
         socket.send(
           JSON.stringify({
             type: "message",
-            ...messageData,
+            ...message,
           }),
         )
-        // Do not call API on success to avoid duplicate inserts
       } catch (error) {
         console.error("[v0] Error sending via WebSocket:", error)
         // Fallback to API
-        await sendViaAPI(messageData)
+        await sendViaAPI(message)
       }
     } else {
       // Fallback to API when WebSocket is not available
-      await sendViaAPI(messageData)
+      await sendViaAPI(message)
     }
 
-    // Không cần simulate partner response nữa vì đã có chat realtime
+    if (!isConnected) {
+      simulatePartnerResponse()
+    }
   }
 
-  const sendViaAPI = async (messageData: any) => {
+  const sendViaAPI = async (message: Message) => {
     try {
       await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...messageData,
-          chatId: chatId || "", // ensure chatId provided for persistence
-        }),
+        body: JSON.stringify(message),
       })
-      console.log("[v0] Message sent via API as fallback")
     } catch (error) {
       console.error("[v0] Error sending via API:", error)
     }
   }
 
+  const simulatePartnerResponse = () => {
+    setIsTyping(true)
+    setTimeout(
+      () => {
+        setIsTyping(false)
+        const responses = [
+          "Em cũng nhớ anh! 💕",
+          "Yêu em nhiều lắm! ❤️",
+          "Em là tất cả của anh! 🌟",
+          "Anh luôn ở đây với em! 💖",
+          "Em đẹp quá! 😍",
+          "Anh yêu em vô cùng! 💝",
+        ]
+        const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+
+        const partnerMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: randomResponse,
+          sender: "partner",
+          timestamp: new Date(),
+          type: "text",
+        }
+
+        setMessages((prev) => [...prev, partnerMessage])
+      },
+      1500 + Math.random() * 2000,
+    )
+  }
 
   const sendSpecialMessage = (type: "heart" | "star") => {
     const specialMessages = {
@@ -249,11 +188,6 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
       type,
     }
 
-    const messageData = {
-      ...message,
-      sender: userEmail, // Gửi email thay vì "me"
-    }
-
     setMessages((prev) => [...prev, message])
 
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -261,7 +195,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
         socket.send(
           JSON.stringify({
             type: "message",
-            ...messageData,
+            ...message,
           }),
         )
       } catch (error) {
@@ -286,16 +220,14 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
             <ArrowLeft className="w-5 h-5 text-primary" />
           </Button>
           <Avatar className="w-12 h-12 ring-2 ring-primary/30">
-            <AvatarImage src="/placeholder-user.jpg" />
-            <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-              {chatName?.charAt(0) || "?"}
-            </AvatarFallback>
+            <AvatarImage src="/cute-anime-girl-avatar.png" />
+            <AvatarFallback className="bg-primary/20 text-primary font-semibold">💕</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h2 className="font-semibold text-lg text-primary">{partnerEmail || "Chat"}</h2>
+            <h2 className="font-semibold text-lg text-primary">Người yêu của em</h2>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full pulse-soft ${isConnected ? "bg-green-400" : "bg-gray-400"}`}></div>
-              {partnerEmail || "Unknown"}
+              {isConnected ? "Đang online" : "Offline"}
             </p>
           </div>
           <Heart className="w-6 h-6 text-red-400 float-animation" />
@@ -304,34 +236,10 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
 
       {/* Messages */}
       <div className="flex-1 px-4 pb-4 space-y-4 overflow-y-auto">
-        {/* Load More Button */}
-        {hasMore && (
-          <div className="text-center py-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadMoreMessages}
-              disabled={loading}
-              className="text-xs"
-            >
-              {loading ? "Đang tải..." : "Tải thêm tin nhắn cũ"}
-            </Button>
-          </div>
-        )}
-
-        <div ref={messagesTopRef} />
-
-        {messages.length === 0 && !loading && (
+        {messages.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             <Heart className="w-12 h-12 mx-auto mb-4 text-pink-400" />
             <p>Bắt đầu cuộc trò chuyện đầu tiên nào! 💕</p>
-          </div>
-        )}
-
-        {loading && messages.length === 0 && (
-          <div className="text-center text-muted-foreground py-8">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p>Đang tải tin nhắn...</p>
           </div>
         )}
 
@@ -339,27 +247,28 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
           <div key={message.id} className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[80%] ${message.sender === "me" ? "order-2" : "order-1"}`}>
               <Card
-                className={`message-bubble p-3 ${message.sender === "me"
-                  ? "bg-primary/80 text-primary-foreground ml-2"
-                  : "bg-card/80 text-card-foreground mr-2"
-                  } ${message.type === "heart" ? "text-2xl text-center" : ""} ${message.type === "star" ? "text-2xl text-center" : ""
-                  }`}
+                className={`message-bubble p-3 ${
+                  message.sender === "me"
+                    ? "bg-primary/80 text-primary-foreground ml-2"
+                    : "bg-card/80 text-card-foreground mr-2"
+                } ${message.type === "heart" ? "text-2xl text-center" : ""} ${
+                  message.type === "star" ? "text-2xl text-center" : ""
+                }`}
               >
                 <p className={`${message.type !== "text" ? "text-2xl" : ""}`}>{message.text}</p>
               </Card>
               <p
-                className={`text-xs text-muted-foreground mt-1 ${message.sender === "me" ? "text-right mr-2" : "text-left ml-2"
-                  }`}
+                className={`text-xs text-muted-foreground mt-1 ${
+                  message.sender === "me" ? "text-right mr-2" : "text-left ml-2"
+                }`}
               >
                 {formatTime(message.timestamp)}
               </p>
             </div>
             {message.sender !== "me" && (
               <Avatar className="w-8 h-8 order-1">
-                <AvatarImage src="/placeholder-user.jpg" />
-                <AvatarFallback className="bg-primary/20 text-xs">
-                  {partnerEmail?.charAt(0) || "?"}
-                </AvatarFallback>
+                <AvatarImage src="/cute-anime-girl-small-avatar.jpg" />
+                <AvatarFallback className="bg-primary/20 text-xs">💕</AvatarFallback>
               </Avatar>
             )}
           </div>
@@ -368,10 +277,8 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
         {isTyping && (
           <div className="flex justify-start">
             <Avatar className="w-8 h-8">
-              <AvatarImage src="/placeholder-user.jpg" />
-              <AvatarFallback className="bg-primary/20 text-xs">
-                {partnerEmail?.charAt(0) || "?"}
-              </AvatarFallback>
+              <AvatarImage src="/cute-anime-girl-small-avatar.jpg" />
+              <AvatarFallback className="bg-primary/20 text-xs">💕</AvatarFallback>
             </Avatar>
             <Card className="message-bubble bg-card/80 text-card-foreground p-3 ml-2">
               <div className="flex gap-1">
@@ -423,7 +330,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={`Nhắn tin cho ${chatName || "người dùng"}...`}
+            placeholder="Nhắn tin cho người yêu..."
             className="flex-1 bg-input/70 border-border/50 rounded-full px-4"
             onKeyPress={(e) => e.key === "Enter" && sendMessage()}
           />
