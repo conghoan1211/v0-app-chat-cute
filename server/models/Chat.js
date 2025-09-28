@@ -13,7 +13,6 @@ const chatSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: "/placeholder-user.jpg",
     },
     lastMessage: {
       type: String,

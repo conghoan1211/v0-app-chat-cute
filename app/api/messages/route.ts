@@ -1,10 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
-import mongoose from "mongoose";
-
-// Import database singleton
-const path = require("path");
-// const db = require(path.join(process.cwd(), "server", "database"));
-// const Message = require(path.join(process.cwd(), "server", "models", "Message"));
+import { type NextRequest, NextResponse } from "next/server";
 
 import db from "@/server/database";
 import Message from "@/server/models/Message";
@@ -16,7 +10,7 @@ export async function GET(request: NextRequest) {
     const chatId = searchParams.get("chatId");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-    
+
     if (!chatId) {
       return NextResponse.json(
         { error: "Missing chatId parameter" },
@@ -49,8 +43,8 @@ export async function GET(request: NextRequest) {
         totalMessages,
         totalPages,
         hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
     });
   } catch (err) {
     console.error("Error fetching messages:", err);
@@ -69,7 +63,10 @@ export async function POST(request: NextRequest) {
 
     if (!chatId || !text || !sender || !id) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: id, chatId, text, sender" },
+        {
+          success: false,
+          error: "Missing required fields: id, chatId, text, sender",
+        },
         { status: 400 }
       );
     }
@@ -89,7 +86,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: saved });
     } catch (e: any) {
       // E11000 duplicate key error
-      if (e && (e.code === 11000 || (e.message && e.message.includes("duplicate key")))) {
+      if (
+        e &&
+        (e.code === 11000 || (e.message && e.message.includes("duplicate key")))
+      ) {
         const existing = await Message.findOne({ id });
         if (existing) {
           return NextResponse.json({ success: true, message: existing });

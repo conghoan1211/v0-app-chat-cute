@@ -7,6 +7,7 @@ const path = require("path");
 // const Account = require(path.join(process.cwd(), "server", "models", "Account"));
 import db from "@/server/database"
 import Account from "@/server/models/Account"
+import constantMessage from "@/styles/constant";
 
 
 export async function POST(req: NextRequest) {
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { email, password } = await req.json();
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Missing email or password" },
+        { error: constantMessage.RegisterMissingFields },
         { status: 400 }
       );
     }
@@ -23,12 +24,10 @@ export async function POST(req: NextRequest) {
 
     let account = await Account.findOne({ email });
     if (!account) {
-      account = await Account.create({ email, password });
-      return NextResponse.json({
-        success: true,
-        message: "Account created",
-        account: { email: account.email },
-      });
+      return NextResponse.json(
+        { error: constantMessage.AccountNotFound },
+        { status: 404 }
+      );
     } else if (account.password === password) {
       return NextResponse.json({
         success: true,
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
         account: { email: account.email },
       });
     } else {
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+      return NextResponse.json({ error: constantMessage.WrongPassword }, { status: 401 });
     }
   } catch (err) {
     return NextResponse.json(

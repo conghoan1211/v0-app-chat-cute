@@ -66,6 +66,58 @@ wss.on("connection", async (ws) => {
           }))
         }
       })
+
+      // Send push notification to other participants (not the sender)
+      try {
+        const http = require('http')
+
+        // Get all participants in the chat to send notifications to everyone except sender
+        const Chat = require('./models/Chat')
+        const chat = await Chat.findOne({ id: newMessage.chatId })
+
+        if (chat && chat.participants) {
+          // Send notification to all participants except the sender
+          const recipients = chat.participants.filter(email => email !== messageData.sender)
+
+          for (const recipientEmail of recipients) {
+            const pushData = {
+              userEmail: recipientEmail, // Send to recipients, not sender
+              title: `Tin nhắn mới từ ${messageData.sender}`,
+              body: messageData.text.length > 50 ? messageData.text.substring(0, 50) + '...' : messageData.text,
+              data: {
+                chatId: newMessage.chatId,
+                sender: messageData.sender,
+                messageId: newMessage.id
+              }
+            }
+
+            const postData = JSON.stringify(pushData)
+            const options = {
+              hostname: 'localhost',
+              port: 3000,
+              path: '/api/push/send',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+              }
+            }
+
+            const req = http.request(options, (res) => {
+              console.log(`Push notification sent to ${recipientEmail}: ${res.statusCode}`)
+            })
+
+            req.on('error', (e) => {
+              console.error(`Push notification error for ${recipientEmail}: ${e.message}`)
+            })
+
+            req.write(postData)
+            req.end()
+          }
+        }
+      } catch (error) {
+        console.error('Error sending push notification:', error)
+      }
     } catch (error) {
       console.error("Error processing message:", error)
     }

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button"
 
 interface IntroScreenProps {
   onStartChat: (email: string) => void
+  onShowRegister?: () => void
 }
 
-export default function IntroScreen({ onStartChat }: IntroScreenProps) {
+export default function IntroScreen({ onStartChat, onShowRegister }: IntroScreenProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -24,8 +25,10 @@ export default function IntroScreen({ onStartChat }: IntroScreenProps) {
         body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
-      if (data.success) {
+      if (res.ok && data.success) {
         onStartChat(email)
+      } else if (res.status === 404) {
+        setError("Tài khoản không tồn tại")
       } else {
         setError(data.error || "Đăng nhập thất bại")
       }
@@ -44,7 +47,7 @@ export default function IntroScreen({ onStartChat }: IntroScreenProps) {
         className="max-w-md w-full text-center space-y-8 bg-white/20 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/30"
       >
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Đăng nhập đi mom  💕</h1>
-        <div className="space-y-4">
+        <div className="space-y-4 mb-3">
           <input
             type="email"
             placeholder="Email"
@@ -62,7 +65,7 @@ export default function IntroScreen({ onStartChat }: IntroScreenProps) {
             required
           />
         </div>
-        {error && <div className="text-red-500 text-sm">{error}</div>}
+        {error && <div className="text-red-500 text-sm mb-5">{error}</div>}
         <Button
           type="submit"
           className="w-full bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
@@ -70,6 +73,16 @@ export default function IntroScreen({ onStartChat }: IntroScreenProps) {
         >
           {loading ? "Đang xử lý..." : "Đăng nhập / Đăng ký"}
         </Button>
+        <div className="text-sm text-gray-700">
+          Chưa có tài khoản? {" "}
+          <button
+            type="button"
+            className="text-pink-600 underline"
+            onClick={() => onShowRegister && onShowRegister()}
+          >
+            Đăng ký
+          </button>
+        </div>
       </form>
     </div>
   )

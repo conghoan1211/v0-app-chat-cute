@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Heart, Send, Smile, Star, ArrowLeft } from "lucide-react"
+import { subscribeToPush } from "@/lib/notifications"
 
 interface Message {
   id: string
@@ -42,14 +43,13 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   // Load messages from API
   const loadMessages = async (pageNum: number = 1, append: boolean = false) => {
     if (!chatId) {
-      chatId = "1759045546169"
+      return;
     }
 
     try {
       setLoading(true)
       const response = await fetch(`/api/messages?chatId=${chatId}&page=${pageNum}&limit=20`)
       const data = await response.json()
-      console.log(response, data)
 
       if (data.success) {
         const newMessages = data.messages.map((msg: any) => ({
@@ -93,6 +93,19 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
       loadMessages(1, false)
     }
   }, [chatId])
+
+  // Subscribe to push notifications when component mounts
+  useEffect(() => {
+    if (userEmail) {
+      subscribeToPush(userEmail).then(success => {
+        if (success) {
+          console.log('Push notifications enabled')
+        } else {
+          console.log('Push notifications not available')
+        }
+      })
+    }
+  }, [userEmail])
 
   useEffect(() => {
     const connectWebSocket = () => {
@@ -279,7 +292,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h2 className="font-semibold text-lg text-primary">{chatName || "Chat"}</h2>
+            <h2 className="font-semibold text-lg text-primary">{partnerEmail || "Chat"}</h2>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full pulse-soft ${isConnected ? "bg-green-400" : "bg-gray-400"}`}></div>
               {partnerEmail || "Unknown"}

@@ -3,8 +3,6 @@ import mongoose from "mongoose";
 
 // Import database singleton
 const path = require("path");
-//const db = require(path.join(process.cwd(), "server", "database"));
-// const Account = require(path.join(process.cwd(), "server", "models", "Account"));
 import Account from "@/server/models/Account";
 import db from "@/server/database";
 
@@ -14,17 +12,25 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
     const currentUserEmail = searchParams.get("currentUserEmail");
-    
+    const checkEmail = searchParams.get("checkEmail");
+
     // Kết nối database
     await db.connect();
 
+    // Nếu checkEmail được cung cấp, kiểm tra sự tồn tại của tài khoản và trả về kết quả
+    if (checkEmail) {
+      await db.connect();
+      const exists = await Account.exists({ email: checkEmail });
+      return NextResponse.json({ success: true, exists: !!exists });
+    }
+
     let query: any = {};
-    
+
     // Nếu có search, tìm theo email
     if (search) {
       query.email = { $regex: search, $options: "i" };
     }
-    
+
     // Loại bỏ user hiện tại khỏi danh sách
     if (currentUserEmail) {
       if (query.email) {
@@ -35,13 +41,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Lấy danh sách tài khoản
-    const accounts = await Account.find(query, { email: 1, _id: 0 })
+    const accounts = await Account.find(query, {
+      email: 1,
+      username: 1,
+      avatarUrl: 1,
+      _id: 0,
+    })
       .limit(50)
       .sort({ email: 1 });
 
     return NextResponse.json({
       success: true,
-      accounts: accounts
+      accounts: accounts,
     });
   } catch (err) {
     console.error("Error fetching accounts:", err);

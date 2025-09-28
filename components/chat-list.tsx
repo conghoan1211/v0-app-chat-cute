@@ -9,7 +9,9 @@ import { Search, Plus, Users, User, MessageCircle } from "lucide-react"
 import { debounce } from "lodash"
 
 interface Account {
-  email: string
+  email: string,
+  username: string,
+  avatarUrl?: string
 }
 
 interface ChatInfo {
@@ -34,13 +36,13 @@ const AccountCard: React.FC<{
   >
     <div className="flex items-center gap-3">
       <Avatar className="w-12 h-12 ring-2 ring-primary/30">
-        <AvatarImage src="/placeholder-user.jpg" />
+        <AvatarImage src={account.avatarUrl} alt={account.username} />
         <AvatarFallback className="bg-primary/20 text-primary font-semibold">
           {account.email.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-primary truncate">{account.email}</h3>
+        <h3 className="font-semibold text-primary truncate">{account.username}</h3>
         <p className="text-sm text-muted-foreground">Nhấn để bắt đầu trò chuyện</p>
       </div>
       <div className="text-primary">
@@ -90,7 +92,6 @@ export default function ChatList({ onSelectChat, onBack, userEmail }: ChatListPr
       setLoading(true)
       const response = await fetch(`/api/accounts?currentUserEmail=${encodeURIComponent(userEmail)}&search=${encodeURIComponent(searchQuery)}`)
       const data = await response.json()
-
       if (data.success) {
         setAccounts(data.accounts)
         setError("")
@@ -105,6 +106,7 @@ export default function ChatList({ onSelectChat, onBack, userEmail }: ChatListPr
   }, [userEmail, searchQuery])
 
   const handleCreateChat = useCallback(
+    
     async (targetEmail: string) => {
       try {
         const res = await fetch("/api/chats", {

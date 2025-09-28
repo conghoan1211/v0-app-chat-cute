@@ -4,8 +4,9 @@ import { useState } from "react"
 import ChatInterface from "@/components/chat-interface"
 import IntroScreen from "@/components/intro-screen"
 import ChatList from "@/components/chat-list"
+import RegisterScreen from "@/components/register-screen"
 
-type Screen = "intro" | "chatList" | "chat"
+type Screen = "intro" | "register" | "chatList" | "chat"
 
 interface ChatInfo {
   id: string
@@ -39,7 +40,9 @@ export default function Home() {
   const renderScreen = () => {
     switch (currentScreen) {
       case "intro":
-        return <IntroScreen onStartChat={handleStartChat} />
+        return <IntroScreen onStartChat={handleStartChat} onShowRegister={() => setCurrentScreen("register")} />
+      case "register":
+        return <RegisterScreen onSuccess={(email) => { setUserEmail(email); setCurrentScreen("chatList") }} onBack={handleBackToIntro} />
       case "chatList":
         return <ChatList onSelectChat={handleSelectChat} onBack={handleBackToIntro} userEmail={userEmail} />
       case "chat":
