@@ -94,7 +94,7 @@ wss.on("connection", async (ws) => {
             const postData = JSON.stringify(pushData)
             const options = {
               hostname: 'localhost',
-              port: 3000,
+              port: 443,
               path: '/api/push/send',
               method: 'POST',
               headers: {
