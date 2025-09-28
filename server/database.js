@@ -15,8 +15,8 @@ class DatabaseConnection {
     try {
       console.log("Connecting to MongoDB...");
       this.connection = await mongoose.connect(process.env.MONGODB_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+        // useNewUrlParser: true,
+        // useUnifiedTopology: true,
       });
       
       this.isConnected = true;

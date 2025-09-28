@@ -10,7 +10,6 @@ const AccountSchema = new mongoose.Schema({
 
 // Index to enforce uniqueness on username and email
 AccountSchema.index({ email: 1 }, { unique: true })
-AccountSchema.index({ username: 1 }, { unique: true })
 
 // Dùng mongoose.models để tránh lỗi model đã tồn tại khi reload
 module.exports = mongoose.models.Account || mongoose.model("Account", AccountSchema);
