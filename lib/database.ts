@@ -22,14 +22,18 @@ class DatabaseConnection {
 
     try {
       console.log("Connecting to MongoDB...");
-      this.connection = await mongoose.connect(process.env.MONGODB_URI as string, {
-        // useNewUrlParser: true,
-        // useUnifiedTopology: true,
-      });
-      
+      this.connection = await mongoose.connect(
+        process.env.MONGODB_URI as string,
+        {
+          // useNewUrlParser: true,
+          // useUnifiedTopology: true,
+          dbName: "chatting",
+        }
+      );
+
       this.isConnected = true;
       console.log(" Connected to MongoDB successfully!");
-      
+
       // Handle connection events
       mongoose.connection.on("error", (error) => {
         console.error(" MongoDB connection error:", error);

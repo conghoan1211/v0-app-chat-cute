@@ -5,10 +5,9 @@ import mongoose from "mongoose";
 const path = require("path");
 // const db = require(path.join(process.cwd(), "server", "database"));
 // const Account = require(path.join(process.cwd(), "server", "models", "Account"));
-import db from "@/server/database"
-import Account from "@/server/models/Account"
+import db from "@/server/database";
+import Account from "@/server/models/Account";
 import constantMessage from "@/styles/constant";
-
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,9 +34,13 @@ export async function POST(req: NextRequest) {
         account: { email: account.email },
       });
     } else {
-      return NextResponse.json({ error: constantMessage.WrongPassword }, { status: 401 });
+      return NextResponse.json(
+        { error: constantMessage.WrongPassword },
+        { status: 401 }
+      );
     }
   } catch (err) {
+    console.error("❌ Auth API error:", err);
     return NextResponse.json(
       { error: "Server error: " + (err as Error).message },
       { status: 500 }

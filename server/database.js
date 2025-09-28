@@ -17,6 +17,7 @@ class DatabaseConnection {
       this.connection = await mongoose.connect(process.env.MONGODB_URI, {
         // useNewUrlParser: true,
         // useUnifiedTopology: true,
+        dbName: "chatting", 
       });
       
       this.isConnected = true;
