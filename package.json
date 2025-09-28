@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start",
+    "start": "next start -p $PORT",
     "server:dev": "npm run dev --prefix server",
     "seed:chats": "node server/seed-chats.js",
     "seed:accounts": "node server/seed-accounts.js",
