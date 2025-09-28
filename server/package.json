@@ -8,14 +8,21 @@
     "dev": "nodemon chat-server.js"
   },
   "dependencies": {
-    "ws": "^8.18.0",
+    "dotenv": "^16.3.1",
     "mongoose": "^8.0.0",
-    "dotenv": "^16.3.1"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "nodemon": "^3.1.10"
   },
-  "keywords": ["chat", "websocket", "realtime", "mongodb", "cute", "couples"],
+  "keywords": [
+    "chat",
+    "websocket",
+    "realtime",
+    "mongodb",
+    "cute",
+    "couples"
+  ],
   "author": "Cute Chat App",
   "license": "MIT",
   "engines": {
