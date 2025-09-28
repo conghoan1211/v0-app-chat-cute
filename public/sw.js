@@ -3,8 +3,8 @@ self.addEventListener('push', function (event) {
     let notificationData = {
         title: 'Tin nhắn mới',
         body: 'Bạn có tin nhắn mới!',
-        icon: '/chat-icon.png',
-        badge: '/chat-badge.png',
+        icon: '/placeholder-logo.png',
+        badge: '/placeholder-logo.png',
         data: {}
     };
 
