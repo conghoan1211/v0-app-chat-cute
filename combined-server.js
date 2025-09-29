@@ -1,7 +1,7 @@
 require("dotenv").config()
 const next = require("next")
 const http = require("http")
-const WebSocket = require("ws")
+const { Server: IOServer } = require("socket.io")
 const url = require("url")
 
 // Local server-side modules
@@ -29,43 +29,30 @@ async function start() {
     server.keepAliveTimeout = 61_000
     server.headersTimeout = 65_000
 
-    // WebSocket server on same HTTP server/port
-    // Disable perMessageDeflate to avoid proxy/protocol quirks on some hosts
-    const wss = new WebSocket.Server({ server, perMessageDeflate: false })
+    // Socket.IO server on same HTTP server/port
+    const io = new IOServer(server, {
+        cors: { origin: true, credentials: true },
+        transports: ["websocket", "polling"],
+    })
 
-    // Store connected clients: Map<WebSocket, { chatId, userEmail }>
-    const clients = new Map()
+    io.on("connection", (socket) => {
+        console.log("[io] connected", socket.id)
 
-    wss.on("connection", (ws) => {
-        console.log("[ws] New client connected")
-
-        // Heartbeat for proxies: keep connections alive
-        ws.isAlive = true
-        ws.on("pong", () => {
-            ws.isAlive = true
+        socket.on("join_chat", ({ chatId, userEmail }) => {
+            socket.data.chatId = chatId
+            socket.data.userEmail = userEmail
+            socket.join(chatId)
+            console.log("[io] join_chat", chatId, userEmail)
         })
 
-        ws.on("message", async (data) => {
+        socket.on("message", async (messageData) => {
             try {
-                const messageData = JSON.parse(data)
+                const chatId = socket.data.chatId
+                if (!chatId) return
 
-                if (messageData.type === "join_chat") {
-                    const { chatId, userEmail } = messageData
-                    clients.set(ws, { chatId, userEmail })
-                    console.log("[ws] Client joined chat:", chatId, "as", userEmail)
-                    return
-                }
-
-                const clientInfo = clients.get(ws)
-                if (!clientInfo || !clientInfo.chatId) {
-                    console.error("[ws] Client not joined any chat")
-                    return
-                }
-
-                // Persist message
                 const newMessage = new Message({
                     id: messageData.id,
-                    chatId: clientInfo.chatId,
+                    chatId,
                     text: messageData.text,
                     sender: messageData.sender,
                     timestamp: new Date(messageData.timestamp),
@@ -73,96 +60,48 @@ async function start() {
                 })
 
                 await newMessage.save()
-                console.log("[ws] Message saved")
+                io.to(chatId).emit("message", { ...messageData, chatId })
 
-                // Broadcast to other clients in same chat
-                clients.forEach((info, client) => {
-                    if (client !== ws && client.readyState === WebSocket.OPEN && info.chatId === newMessage.chatId) {
-                        client.send(
-                            JSON.stringify({
-                                ...messageData,
-                                chatId: newMessage.chatId,
-                            }),
-                        )
-                    }
-                })
-
-                // Push notifications to recipients (exclude sender)
                 try {
-                    const chat = await Chat.findOne({ id: newMessage.chatId })
+                    const chat = await Chat.findOne({ id: chatId })
                     if (chat && chat.participants) {
                         const recipients = chat.participants.filter((email) => email !== messageData.sender)
                         const payload = JSON.stringify({
                             title: `Tin nhắn mới từ ${messageData.sender}`,
                             body: messageData.text && messageData.text.length > 50 ? messageData.text.substring(0, 50) + "..." : messageData.text,
-                            data: {
-                                chatId: newMessage.chatId,
-                                sender: messageData.sender,
-                                messageId: newMessage.id,
-                            },
+                            data: { chatId, sender: messageData.sender, messageId: newMessage.id },
                         })
 
-                        recipients.forEach(async (recipientEmail) => {
-                            // Call Next API to send push using web-push (keeps logic in one place)
-                            const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`
-                            const isHttps = baseUrl.startsWith("https://")
-                            const { request } = isHttps ? require("https") : require("http")
-                            const { hostname, port: urlPort, pathname } = new URL(baseUrl)
+                        const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`
+                        const isHttps = baseUrl.startsWith("https://")
+                        const { request } = isHttps ? require("https") : require("http")
+                        const { hostname, port: urlPort } = new URL(baseUrl)
+                        for (const recipientEmail of recipients) {
                             const req = request(
-                                {
-                                    hostname,
-                                    port: urlPort || (isHttps ? 443 : 80),
-                                    path: `/api/push/send`,
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                },
-                                (res) => {
-                                    console.log(`[push] ${recipientEmail} -> ${res.statusCode}`)
-                                },
+                                { hostname, port: urlPort || (isHttps ? 443 : 80), path: "/api/push/send", method: "POST", headers: { "Content-Type": "application/json" } },
+                                (res) => console.log(`[push] ${recipientEmail} -> ${res.statusCode}`),
                             )
                             req.on("error", (e) => console.error("[push] error", e.message))
                             req.write(JSON.stringify({ userEmail: recipientEmail, ...JSON.parse(payload) }))
                             req.end()
-                        })
+                        }
                     }
                 } catch (err) {
-                    console.error("[ws] Push notify error:", err)
+                    console.error("[io] push notify error:", err)
                 }
             } catch (err) {
-                console.error("[ws] Error processing message:", err)
+                console.error("[io] message error:", err)
             }
         })
 
-        ws.on("close", () => {
-            clients.delete(ws)
-            console.log("[ws] Client disconnected")
+        socket.on("disconnect", () => {
+            console.log("[io] disconnected", socket.id)
         })
-
-        ws.on("error", (err) => {
-            clients.delete(ws)
-            console.error("[ws] Error:", err)
-        })
-    })
-
-    // Global heartbeat (avoid per-connection intervals)
-    const heartbeatIntervalMs = 15_000
-    const heartbeat = setInterval(() => {
-        wss.clients.forEach((client) => {
-            if (client.isAlive === false) return client.terminate()
-            client.isAlive = false
-            try {
-                client.ping()
-            } catch { }
-        })
-    }, heartbeatIntervalMs)
-
-    wss.on("close", () => {
-        clearInterval(heartbeat)
     })
 
     server.listen(port, () => {
         console.log(`➡️  Server ready on http://localhost:${port}`)
-        console.log(`➡️  WebSocket ready on ws://localhost:${port}`)
+        console.log(`➡️  Socket.IO ready on ws://localhost:${port}`)
     })
 }
 

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Heart, Send, Smile, Star, ArrowLeft } from "lucide-react"
 import { subscribeToPush } from "@/lib/notifications"
+import { io, Socket } from "socket.io-client"
 
 interface Message {
   id: string
@@ -28,7 +29,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [socket, setSocket] = useState<WebSocket | null>(null)
+  const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -108,117 +109,64 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   }, [userEmail])
 
   useEffect(() => {
-    const connectWebSocket = () => {
+    const connectSocket = () => {
       try {
-        // Normalize to ensure wss on https pages and ws on http pages
-        const normalizeToWs = (value: string): string => {
-          if (!value) return ""
-          const isHttpsPage = window.location.protocol === "https:"
-          if (value.startsWith("ws://") || value.startsWith("wss://")) {
-            // If protocol is explicitly provided but mismatched, prefer secure on https pages
-            if (isHttpsPage && value.startsWith("ws://")) {
-              return value.replace(/^ws:\/\//, "wss://")
-            }
-            // Force secure for Render hosts regardless
-            if (/\.onrender\.com(\/?|$)/.test(value) && value.startsWith("ws://")) {
-              return value.replace(/^ws:\/\//, "wss://")
-            }
-            return value
-          }
-          if (value.startsWith("https://")) {
-            return value.replace(/^https:\/\//, "wss://")
-          }
-          if (value.startsWith("http://")) {
-            return value.replace(/^http:\/\//, "ws://")
-          }
-          // Bare host, infer from current page
-          const inferred = `${isHttpsPage ? "wss" : "ws"}://${value}`
-          // Force secure for Render hosts
-          if (/\.onrender\.com(\/?|$)/.test(inferred) && inferred.startsWith("ws://")) {
-            return inferred.replace(/^ws:\/\//, "wss://")
-          }
-          return inferred
-        }
+        const envPrimary = process.env.NEXT_PUBLIC_WS_URL?.trim()
+        const envBase = process.env.NEXT_PUBLIC_WS_BASE?.trim()
+        let base = envPrimary || envBase || window.location.origin
+        if (base.startsWith("ws://")) base = base.replace(/^ws:\/\//, "http://")
+        if (base.startsWith("wss://")) base = base.replace(/^wss:\/\//, "https://")
 
-        let wsUrl: string
-        const envPrimary = process.env.NEXT_PUBLIC_WS_URL
-        const envBase = process.env.NEXT_PUBLIC_WS_BASE
-        if (envPrimary && envPrimary.trim().length > 0) {
-          wsUrl = normalizeToWs(envPrimary.trim())
-        } else if (envBase && envBase.trim().length > 0) {
-          wsUrl = normalizeToWs(envBase.trim())
-        } else {
-          const isHttpsPage = window.location.protocol === "https:"
-          wsUrl = `${isHttpsPage ? "wss" : "ws"}://${window.location.host}`
-        }
+        const s = io(base, { transports: ["websocket"], withCredentials: true })
 
-        // Helpful for debugging env issues
-        // eslint-disable-next-line no-console
-        console.log("[v0] Connecting WebSocket:", wsUrl)
-        const ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
+        s.on("connect", () => {
           console.log("[v0] Connected to chat server")
-          setSocket(ws)
+          setSocket(s)
           setIsConnected(true)
-
-          // Join the chat
           if (chatId && userEmail) {
-            ws.send(JSON.stringify({
-              type: "join_chat",
-              chatId: chatId,
-              userEmail: userEmail
-            }))
+            s.emit("join_chat", { chatId, userEmail })
           }
-        }
+        })
 
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            const newMessage: Message = {
-              id: data.id,
-              text: data.text,
-              sender: data.sender === userEmail ? "me" : "partner",
-              timestamp: new Date(data.timestamp),
-              type: data.type || "text",
-            }
-            setMessages((prev) => {
-              const exists = prev.some((msg) => msg.id === newMessage.id)
-              if (exists) return prev
-              return [...prev, newMessage]
-            })
-          } catch (error) {
-            console.error("[v0] Error parsing message:", error)
+        s.on("message", (data: any) => {
+          const newMessage: Message = {
+            id: data.id,
+            text: data.text,
+            sender: data.sender === userEmail ? "me" : "partner",
+            timestamp: new Date(data.timestamp),
+            type: data.type || "text",
           }
-        }
+          setMessages((prev) => {
+            const exists = prev.some((msg) => msg.id === newMessage.id)
+            if (exists) return prev
+            return [...prev, newMessage]
+          })
+        })
 
-        ws.onclose = () => {
+        s.on("disconnect", () => {
           console.log("[v0] Disconnected from chat server")
           setSocket(null)
           setIsConnected(false)
-          setTimeout(connectWebSocket, 3000)
-        }
+          setTimeout(connectSocket, 3000)
+        })
 
-        ws.onerror = (error) => {
-          console.error("[v0] WebSocket error:", error)
+        s.on("connect_error", (error) => {
+          console.error("[v0] Socket.IO error:", error)
           setIsConnected(false)
-        }
+        })
 
-        return ws
+        return s
       } catch (error) {
-        console.error("[v0] Failed to connect to WebSocket:", error)
+        console.error("[v0] Failed to connect to Socket.IO:", error)
         setIsConnected(false)
-        setTimeout(connectWebSocket, 5000)
+        setTimeout(connectSocket, 5000)
         return null
       }
     }
 
-    const ws = connectWebSocket()
-
+    const s = connectSocket()
     return () => {
-      if (ws) {
-        ws.close()
-      }
+      if (s) s.close()
     }
   }, [])
 
@@ -241,14 +189,9 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
     setMessages((prev) => [...prev, message])
     setNewMessage("")
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.connected) {
       try {
-        socket.send(
-          JSON.stringify({
-            type: "message",
-            ...messageData,
-          }),
-        )
+        socket.emit("message", messageData)
         // Do not call API on success to avoid duplicate inserts
       } catch (error) {
         console.error("[v0] Error sending via WebSocket:", error)
@@ -301,14 +244,9 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
 
     setMessages((prev) => [...prev, message])
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket && socket.connected) {
       try {
-        socket.send(
-          JSON.stringify({
-            type: "message",
-            ...messageData,
-          }),
-        )
+        socket.emit("message", messageData)
       } catch (error) {
         console.error("[v0] Error sending special message:", error)
       }
