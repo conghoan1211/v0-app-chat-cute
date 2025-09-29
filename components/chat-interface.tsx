@@ -110,9 +110,42 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   useEffect(() => {
     const connectWebSocket = () => {
       try {
-        const base = process.env.NEXT_PUBLIC_WS_BASE || window.location.host
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
-        const wsUrl = `${wsProtocol}://${base}`
+        // Normalize to ensure wss on https pages and ws on http pages
+        const normalizeToWs = (value: string): string => {
+          if (!value) return ""
+          const isHttpsPage = window.location.protocol === "https:"
+          if (value.startsWith("ws://") || value.startsWith("wss://")) {
+            // If protocol is explicitly provided but mismatched, prefer secure on https pages
+            if (isHttpsPage && value.startsWith("ws://")) {
+              return value.replace(/^ws:\/\//, "wss://")
+            }
+            return value
+          }
+          if (value.startsWith("https://")) {
+            return value.replace(/^https:\/\//, "wss://")
+          }
+          if (value.startsWith("http://")) {
+            return value.replace(/^http:\/\//, "ws://")
+          }
+          // Bare host, infer from current page
+          return `${isHttpsPage ? "wss" : "ws"}://${value}`
+        }
+
+        let wsUrl: string
+        const envPrimary = process.env.NEXT_PUBLIC_WS_URL
+        const envBase = process.env.NEXT_PUBLIC_WS_BASE
+        if (envPrimary && envPrimary.trim().length > 0) {
+          wsUrl = normalizeToWs(envPrimary.trim())
+        } else if (envBase && envBase.trim().length > 0) {
+          wsUrl = normalizeToWs(envBase.trim())
+        } else {
+          const isHttpsPage = window.location.protocol === "https:"
+          wsUrl = `${isHttpsPage ? "wss" : "ws"}://${window.location.host}`
+        }
+
+        // Helpful for debugging env issues
+        // eslint-disable-next-line no-console
+        console.log("[v0] Connecting WebSocket:", wsUrl)
         const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {
