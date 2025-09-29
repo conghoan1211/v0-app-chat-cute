@@ -153,12 +153,15 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
       () => {
         setIsTyping(false)
         const responses = [
-          "Em cũng nhớ anh! 💕",
+          "Anh cũng nhớ em! 💕",
           "Yêu em nhiều lắm! ❤️",
           "Em là tất cả của anh! 🌟",
           "Anh luôn ở đây với em! 💖",
           "Em đẹp quá! 😍",
           "Anh yêu em vô cùng! 💝",
+          "Baby em đừng khóc nữa nhaa",
+          "Vì môi em phải luôn cừi tươii 💕",
+          "Thấy tin nhắn này hãy unblock anh nha 💕",
         ]
         const randomResponse = responses[Math.floor(Math.random() * responses.length)]
 
