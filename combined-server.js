@@ -10,7 +10,6 @@ const Message = require("./server/models/Message")
 const Chat = require("./server/models/Chat")
 
 const dev = process.env.NODE_ENV !== "production"
-
 const port = parseInt(process.env.PORT || "3000", 10)
 const pushHandler = require("./app/api/push/send/route")
 
@@ -94,21 +93,24 @@ async function start() {
                             },
                         })
 
-
-                        for (const recipientEmail of recipients) {
-                            try {
-                                // gọi trực tiếp API handler, giả lập Request object
-                                const req = new Request("http://internal/api/push/send", {
+                        recipients.forEach(async (recipientEmail) => {
+                            // Call Next API to send push using web-push (keeps logic in one place)
+                            const req = http.request(
+                                {
+                                    hostname: "localhost",
+                                    port,
+                                    path: "/api/push/send",
                                     method: "POST",
-                                    body: JSON.stringify({ userEmail: recipientEmail, ...payload }),
-                                    headers: { "Content-Type": "application/json" }
-                                })
-                                const res = await pushHandler.POST(req)
-                                console.log(`[push] ${recipientEmail} -> ${res.status}`)
-                            } catch (err) {
-                                console.error(`[push] error for ${recipientEmail}:`, err)
-                            }
-                        }
+                                    headers: { "Content-Type": "application/json" },
+                                },
+                                (res) => {
+                                    console.log(`[push] ${recipientEmail} -> ${res.statusCode}`)
+                                },
+                            )
+                            req.on("error", (e) => console.error("[push] error", e.message))
+                            req.write(JSON.stringify({ userEmail: recipientEmail, ...JSON.parse(payload) }))
+                            req.end()
+                        })
                     }
                 } catch (err) {
                     console.error("[ws] Push notify error:", err)
