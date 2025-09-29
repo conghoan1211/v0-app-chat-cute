@@ -30,7 +30,8 @@ async function start() {
     server.headersTimeout = 65_000
 
     // WebSocket server on same HTTP server/port
-    const wss = new WebSocket.Server({ server })
+    // Disable perMessageDeflate to avoid proxy/protocol quirks on some hosts
+    const wss = new WebSocket.Server({ server, perMessageDeflate: false })
 
     // Store connected clients: Map<WebSocket, { chatId, userEmail }>
     const clients = new Map()
@@ -132,21 +133,6 @@ async function start() {
             }
         })
 
-        // Ping all clients periodically
-        const interval = setInterval(() => {
-            wss.clients.forEach((ws) => {
-                if (ws.isAlive === false) return ws.terminate()
-                ws.isAlive = false
-                try {
-                    ws.ping()
-                } catch { }
-            })
-        }, 25_000)
-
-        wss.on("close", () => {
-            clearInterval(interval)
-        })
-
         ws.on("close", () => {
             clients.delete(ws)
             console.log("[ws] Client disconnected")
@@ -156,6 +142,22 @@ async function start() {
             clients.delete(ws)
             console.error("[ws] Error:", err)
         })
+    })
+
+    // Global heartbeat (avoid per-connection intervals)
+    const heartbeatIntervalMs = 15_000
+    const heartbeat = setInterval(() => {
+        wss.clients.forEach((client) => {
+            if (client.isAlive === false) return client.terminate()
+            client.isAlive = false
+            try {
+                client.ping()
+            } catch { }
+        })
+    }, heartbeatIntervalMs)
+
+    wss.on("close", () => {
+        clearInterval(heartbeat)
     })
 
     server.listen(port, () => {
