@@ -11,7 +11,8 @@ import { debounce } from "lodash"
 interface Account {
   email: string,
   username: string,
-  avatarUrl?: string
+  avatarUrl?: string,
+  status?: "online" | "offline"
 }
 
 interface ChatInfo {
@@ -35,11 +36,14 @@ const AccountCard: React.FC<{
     onClick={() => onSelect(account.email)}
   >
     <div className="flex items-center gap-3">
-      <Avatar className="w-12 h-12 ring-2 ring-primary/30">
+      <Avatar className="w-12 h-12 ring-2 ring-primary/30 relative">
         <AvatarImage src={account.avatarUrl} alt={account.username} />
         <AvatarFallback className="bg-primary/20 text-primary font-semibold">
           {account.email.charAt(0).toUpperCase()}
         </AvatarFallback>
+        {account.status === "online" && (
+          <span className="absolute -bottom-0 -right-0 w-3 h-3 rounded-full bg-green-500 ring-2 ring-white" />
+        )}
       </Avatar>
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-primary truncate">{account.username}</h3>
@@ -106,7 +110,7 @@ export default function ChatList({ onSelectChat, onBack, userEmail }: ChatListPr
   }, [userEmail, searchQuery])
 
   const handleCreateChat = useCallback(
-    
+
     async (targetEmail: string) => {
       try {
         const res = await fetch("/api/chats", {

@@ -5,6 +5,7 @@ const AccountSchema = new mongoose.Schema({
     password: { type: String, required: true }, // Lưu ý: nên hash password ở thực tế!
     username: { type: String, required: true, unique: true },
     avatarUrl: { type: String },
+    status: { type: String, enum: ["online", "offline"], default: "offline" },
     createdAt: { type: Date, default: Date.now }
 });
 

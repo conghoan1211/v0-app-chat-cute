@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       email: 1,
       username: 1,
       avatarUrl: 1,
+      status: 1,
       _id: 0,
     })
       .limit(50)

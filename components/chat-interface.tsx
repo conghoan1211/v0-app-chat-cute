@@ -36,6 +36,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   const [hasMore, setHasMore] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesTopRef = useRef<HTMLDivElement>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -253,6 +254,18 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
     }
   }
 
+  const emojiList = [
+    "😀", "😁", "😂", "🤣", "🥰", "😍", "😘", "😜", "🤗", "🤭",
+    "🤔", "😎", "🤩", "🥳", "😇", "🙃", "😉", "😊", "😌", "😴",
+    "🤤", "😋", "🤤", "😏", "😒", "😢", "😭", "😡", "😤", "🤬",
+    "👍", "👎", "👏", "🙌", "🙏", "🤝", "💪", "💖", "💘", "✨",
+    "🎉", "💐", "🌸", "🌹", "🔥", "⭐", "🌟", "🌈", "☀️", "🌙"
+  ]
+
+  const onSelectEmoji = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji)
+  }
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -274,8 +287,8 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
               {chatName?.charAt(0) || "?"}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h2 className="font-semibold text-lg text-primary">{partnerEmail || "Chat"}</h2>
+          <div className="flex-1 overflow-hidden">
+            <h2 className="font-semibold text-lg text-primary ">{partnerEmail || "Chat"}</h2>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full pulse-soft ${isConnected ? "bg-green-400" : "bg-gray-400"}`}></div>
               {partnerEmail || "Unknown"}
@@ -376,7 +389,7 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
 
       {/* Input Area */}
       <Card className="glass-effect rounded-t-3xl p-4 sticky bottom-0">
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-3 relative">
           <Button
             variant="outline"
             size="sm"
@@ -393,13 +406,33 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
           >
             <Star className="w-4 h-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-blue-100/50 hover:bg-blue-200/50 text-blue-600 border-blue-200"
-          >
-            <Smile className="w-4 h-4" />
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmojiPicker((v) => !v)}
+              type="button"
+              aria-label="Chèn emoji"
+              className="bg-blue-100/50 hover:bg-blue-200/50 text-blue-600 border-blue-200"
+            >
+              <Smile className="w-4 h-4" />
+            </Button>
+
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 left-0 z-50 w-64 max-h-52 overflow-auto rounded-xl shadow-xl border border-white/40 bg-white/90 backdrop-blur-md p-2 grid grid-cols-8 gap-1">
+                {emojiList.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className="text-xl hover:scale-110 transition-transform"
+                    onClick={() => onSelectEmoji(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2">

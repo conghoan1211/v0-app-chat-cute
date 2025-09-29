@@ -8,6 +8,7 @@ const url = require("url")
 const database = require("./server/database")
 const Message = require("./server/models/Message")
 const Chat = require("./server/models/Chat")
+const Account = require("./server/models/Account")
 
 const dev = process.env.NODE_ENV !== "production"
 const port = parseInt(process.env.PORT || "3000", 10)
@@ -38,11 +39,15 @@ async function start() {
     io.on("connection", (socket) => {
         console.log("[io] connected", socket.id)
 
-        socket.on("join_chat", ({ chatId, userEmail }) => {
+        socket.on("join_chat", async ({ chatId, userEmail }) => {
             socket.data.chatId = chatId
             socket.data.userEmail = userEmail
             socket.join(chatId)
             console.log("[io] join_chat", chatId, userEmail)
+            // Mark account online
+            if (userEmail) {
+                try { await Account.updateOne({ email: userEmail }, { status: "online" }) } catch { }
+            }
         })
 
         socket.on("message", async (messageData) => {
@@ -94,8 +99,12 @@ async function start() {
             }
         })
 
-        socket.on("disconnect", () => {
+        socket.on("disconnect", async () => {
             console.log("[io] disconnected", socket.id)
+            const email = socket.data.userEmail
+            if (email) {
+                try { await Account.updateOne({ email }, { status: "offline" }) } catch { }
+            }
         })
     })
 
