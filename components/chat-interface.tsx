@@ -110,8 +110,9 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   useEffect(() => {
     const connectWebSocket = () => {
       try {
+        const base = process.env.NEXT_PUBLIC_WS_BASE || window.location.host
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
-        const wsUrl = `${wsProtocol}://${window.location.host}`
+        const wsUrl = `${wsProtocol}://${base}`
         const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {

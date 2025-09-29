@@ -25,6 +25,9 @@ async function start() {
         const parsedUrl = url.parse(req.url, true)
         handle(req, res, parsedUrl)
     })
+    // Tune timeouts for proxies (Render/ELB best practices)
+    server.keepAliveTimeout = 61_000
+    server.headersTimeout = 65_000
 
     // WebSocket server on same HTTP server/port
     const wss = new WebSocket.Server({ server })
@@ -34,6 +37,12 @@ async function start() {
 
     wss.on("connection", (ws) => {
         console.log("[ws] New client connected")
+
+        // Heartbeat for proxies: keep connections alive
+        ws.isAlive = true
+        ws.on("pong", () => {
+            ws.isAlive = true
+        })
 
         ws.on("message", async (data) => {
             try {
@@ -94,11 +103,15 @@ async function start() {
 
                         recipients.forEach(async (recipientEmail) => {
                             // Call Next API to send push using web-push (keeps logic in one place)
-                            const req = http.request(
+                            const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`
+                            const isHttps = baseUrl.startsWith("https://")
+                            const { request } = isHttps ? require("https") : require("http")
+                            const { hostname, port: urlPort, pathname } = new URL(baseUrl)
+                            const req = request(
                                 {
-                                    hostname: "localhost",
-                                    port,
-                                    path: "/api/push/send",
+                                    hostname,
+                                    port: urlPort || (isHttps ? 443 : 80),
+                                    path: `/api/push/send`,
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                 },
@@ -117,6 +130,21 @@ async function start() {
             } catch (err) {
                 console.error("[ws] Error processing message:", err)
             }
+        })
+
+        // Ping all clients periodically
+        const interval = setInterval(() => {
+            wss.clients.forEach((ws) => {
+                if (ws.isAlive === false) return ws.terminate()
+                ws.isAlive = false
+                try {
+                    ws.ping()
+                } catch { }
+            })
+        }, 25_000)
+
+        wss.on("close", () => {
+            clearInterval(interval)
         })
 
         ws.on("close", () => {
