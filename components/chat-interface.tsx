@@ -110,8 +110,9 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
   useEffect(() => {
     const connectWebSocket = () => {
       try {
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
-        const ws = new WebSocket(wsUrl);
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
+        const wsUrl = `${wsProtocol}://${window.location.host}`
+        const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {
           console.log("[v0] Connected to chat server")
