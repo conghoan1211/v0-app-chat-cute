@@ -119,6 +119,10 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
             if (isHttpsPage && value.startsWith("ws://")) {
               return value.replace(/^ws:\/\//, "wss://")
             }
+            // Force secure for Render hosts regardless
+            if (/\.onrender\.com(\/?|$)/.test(value) && value.startsWith("ws://")) {
+              return value.replace(/^ws:\/\//, "wss://")
+            }
             return value
           }
           if (value.startsWith("https://")) {
@@ -128,7 +132,12 @@ export default function ChatInterface({ onBack, chatId, chatName, partnerEmail, 
             return value.replace(/^http:\/\//, "ws://")
           }
           // Bare host, infer from current page
-          return `${isHttpsPage ? "wss" : "ws"}://${value}`
+          const inferred = `${isHttpsPage ? "wss" : "ws"}://${value}`
+          // Force secure for Render hosts
+          if (/\.onrender\.com(\/?|$)/.test(inferred) && inferred.startsWith("ws://")) {
+            return inferred.replace(/^ws:\/\//, "wss://")
+          }
+          return inferred
         }
 
         let wsUrl: string
