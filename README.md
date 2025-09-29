@@ -5,56 +5,83 @@
 ## ✨ Tính năng
 
 - 💕 Giao diện cute với gradient pastel
-- 💬 Chat realtime qua WebSocket
+- 💬 Chat realtime với API polling
 - 💖 Tin nhắn trái tim và ngôi sao đặc biệt
 - 📱 Responsive hoàn toàn cho mobile
 - 🗄️ Lưu trữ tin nhắn với MongoDB
-- 🔄 Auto-reconnect khi mất kết nối
 - 🎨 Hiệu ứng animation mượt mà
+- 🚀 Deploy dễ dàng trên Vercel
 
 ## 🚀 Cách chạy ứng dụng
 
 ### 1. Cài đặt dependencies
 
 \`\`\`bash
-# Cài đặt cho client (Next.js)
 npm install
-
-# Cài đặt cho server
-cd server
-npm install
-cd ..
 \`\`\`
 
 ### 2. Cấu hình MongoDB
 
-Tạo file `server/.env` và thêm:
+Thêm environment variable trong Vercel hoặc file `.env.local`:
 
 \`\`\`env
-MONGODB_URI=mongodb+srv://hoanpham12112003_db_user:<db_password>@chatting.sjvaxvz.mongodb.net/?retryWrites=true&w=majority&appName=chatting
-PORT=3001
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+NODE_ENV=development
 \`\`\`
 
 ### 3. Chạy ứng dụng
 
 \`\`\`bash
-# Terminal 1: Chạy server WebSocket
-npm run server:dev
-
-# Terminal 2: Chạy client Next.js
+# Development
 npm run dev
+
+# Production
+npm run build
+npm start
 \`\`\`
 
 ### 4. Truy cập ứng dụng
 
-- Client: http://localhost:3000
-- Server: ws://localhost:3001
+- Development: http://localhost:3000
+- Production: URL từ Vercel deployment
+
+## 🌐 Deploy Production (Giải quyết vấn đề "cần tài khoản Vercel")
+
+### Vấn đề: Tại sao người khác cần tài khoản Vercel để xem?
+
+Điều này xảy ra khi ứng dụng chưa được deploy **production**. Giải pháp:
+
+### ✅ Deploy qua Vercel Dashboard
+
+1. Truy cập https://vercel.com và đăng nhập
+2. Nhấn "New Project" → Import từ GitHub
+3. Thêm Environment Variables:
+   - `MONGODB_URI`: Connection string MongoDB
+   - `NODE_ENV`: `production`
+4. Nhấn "Deploy"
+
+### ✅ Deploy qua CLI
+
+\`\`\`bash
+# Cài đặt Vercel CLI
+npm i -g vercel
+
+# Deploy production
+vercel --prod
+\`\`\`
+
+### ✅ Kết quả
+
+Sau khi deploy thành công:
+- ✅ URL công khai (VD: `https://cute-chat-app.vercel.app`)
+- ✅ **Bất kỳ ai** có link đều truy cập được mà không cần tài khoản Vercel
+- ✅ Ứng dụng hoạt động độc lập hoàn toàn
 
 ## 🏗️ Cấu trúc dự án
 
 \`\`\`
 ├── app/                    # Next.js App Router
-│   ├── api/messages/       # API routes (fallback)
+│   ├── api/messages/       # API routes cho MongoDB
 │   ├── globals.css         # Global styles với theme cute
 │   ├── layout.tsx          # Root layout
 │   └── page.tsx           # Main page với state management
@@ -62,11 +89,9 @@ npm run dev
 │   ├── chat-interface.tsx  # Giao diện chat chính
 │   ├── intro-screen.tsx    # Màn hình giới thiệu
 │   └── ui/                # Shadcn/ui components
-├── server/
-│   ├── chat-server.js     # WebSocket server
-│   ├── models/Message.js  # MongoDB schema
-│   └── package.json       # Server dependencies
-└── public/                # Static assets
+├── server/                # Legacy server files (không dùng trong production)
+├── vercel.json            # Cấu hình Vercel deployment
+└── DEPLOYMENT.md          # Hướng dẫn deploy chi tiết
 \`\`\`
 
 ## 🎨 Thiết kế
@@ -80,9 +105,9 @@ npm run dev
 
 - **Frontend**: Next.js 14, React 19, TypeScript
 - **UI**: Shadcn/ui, Tailwind CSS, Lucide icons
-- **Backend**: Node.js, WebSocket (ws)
+- **Backend**: Next.js API Routes
 - **Database**: MongoDB với Mongoose
-- **Deployment**: Vercel (client), Railway/Heroku (server)
+- **Deployment**: Vercel (full-stack)
 
 ## 📱 Responsive Design
 
@@ -91,19 +116,16 @@ npm run dev
 - 📱 Tablet (768px+)
 - 💻 Desktop (1024px+)
 
-## 🚀 Deploy
+## 🔍 Troubleshooting
 
-### Client (Vercel)
-\`\`\`bash
-npm run build
-# Deploy to Vercel
-\`\`\`
+### "Cần tài khoản Vercel để xem"
+- **Nguyên nhân**: Ứng dụng ở chế độ preview
+- **Giải pháp**: Deploy production như hướng dẫn trên
 
-### Server (Railway/Heroku)
-\`\`\`bash
-cd server
-# Deploy server to Railway hoặc Heroku
-\`\`\`
+### Lỗi Database Connection
+- Kiểm tra `MONGODB_URI` đúng format
+- Whitelist IP trong MongoDB Atlas
+- Test connection với MongoDB Compass
 
 ## 🤝 Đóng góp
 

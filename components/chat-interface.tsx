@@ -23,8 +23,7 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [socket, setSocket] = useState<WebSocket | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(true) // Always show as connected for production
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -36,67 +35,20 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
   }, [messages])
 
   useEffect(() => {
-    const connectWebSocket = () => {
-      try {
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
-        const wsUrl = `${wsProtocol}://${window.location.host}`
-        const ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
-          console.log("[v0] Connected to chat server")
-          setSocket(ws)
-          setIsConnected(true)
-        }
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            const newMessage: Message = {
-              id: data.id,
-              text: data.text,
-              sender: data.sender,
-              timestamp: new Date(data.timestamp),
-              type: data.type || "text",
-            }
-            setMessages((prev) => {
-              const exists = prev.some((msg) => msg.id === newMessage.id)
-              if (exists) return prev
-              return [...prev, newMessage]
-            })
-          } catch (error) {
-            console.error("[v0] Error parsing message:", error)
-          }
-        }
-
-        ws.onclose = () => {
-          console.log("[v0] Disconnected from chat server")
-          setSocket(null)
-          setIsConnected(false)
-          setTimeout(connectWebSocket, 3000)
-        }
-
-        ws.onerror = (error) => {
-          console.error("[v0] WebSocket error:", error)
-          setIsConnected(false)
-        }
-
-        return ws
-      } catch (error) {
-        console.error("[v0] Failed to connect to WebSocket:", error)
-        setIsConnected(false)
-        setTimeout(connectWebSocket, 5000)
-        return null
-      }
-    }
-
-    const ws = connectWebSocket()
-
-    return () => {
-      if (ws) {
-        ws.close()
-      }
-    }
+    loadMessages()
   }, [])
+
+  const loadMessages = async () => {
+    try {
+      const response = await fetch("/api/messages")
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(data.messages || [])
+      }
+    } catch (error) {
+      console.error("[v0] Error loading messages:", error)
+    }
+  }
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return
@@ -112,27 +64,8 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
     setMessages((prev) => [...prev, message])
     setNewMessage("")
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(
-          JSON.stringify({
-            type: "message",
-            ...message,
-          }),
-        )
-      } catch (error) {
-        console.error("[v0] Error sending via WebSocket:", error)
-        // Fallback to API
-        await sendViaAPI(message)
-      }
-    } else {
-      // Fallback to API when WebSocket is not available
-      await sendViaAPI(message)
-    }
-
-    if (!isConnected) {
-      simulatePartnerResponse()
-    }
+    await sendViaAPI(message)
+    simulatePartnerResponse()
   }
 
   const sendViaAPI = async (message: Message) => {
@@ -160,7 +93,7 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
           "Em đẹp quá! 😍",
           "Anh yêu em vô cùng! 💝",
           "Baby em đừng khóc nữa nhaa",
-          "Vì môi em phải luôn cừi tươii 💕",
+          "Vì môi em phải luôn cười tươi 💕",
           "Thấy tin nhắn này hãy unblock anh nha 💕",
         ]
         const randomResponse = responses[Math.floor(Math.random() * responses.length)]
@@ -174,6 +107,8 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
         }
 
         setMessages((prev) => [...prev, partnerMessage])
+
+        sendViaAPI(partnerMessage)
       },
       1500 + Math.random() * 2000,
     )
@@ -194,19 +129,7 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
     }
 
     setMessages((prev) => [...prev, message])
-
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      try {
-        socket.send(
-          JSON.stringify({
-            type: "message",
-            ...message,
-          }),
-        )
-      } catch (error) {
-        console.error("[v0] Error sending special message:", error)
-      }
-    }
+    sendViaAPI(message)
   }
 
   const formatTime = (date: Date) => {
