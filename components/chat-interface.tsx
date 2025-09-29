@@ -38,7 +38,9 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
   useEffect(() => {
     const connectWebSocket = () => {
       try {
-        const ws = new WebSocket("ws://localhost:3001")
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws"
+        const wsUrl = `${wsProtocol}://${window.location.host}`
+        const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {
           console.log("[v0] Connected to chat server")

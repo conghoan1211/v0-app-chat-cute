@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "node combined-server.js",
     "lint": "next lint",
-    "start": "next start"
+    "start": "NODE_ENV=production node combined-server.js",
+    "server:dev": "node combined-server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

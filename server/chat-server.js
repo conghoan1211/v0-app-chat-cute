@@ -91,26 +91,16 @@ wss.on("connection", async (ws) => {
               type: "text",
             }
 
-            try {
-              const autoReplyMessage = new Message({
-                id: autoMessage.id,
-                text: autoMessage.text,
-                sender: autoMessage.sender,
-                timestamp: new Date(autoMessage.timestamp),
-                type: autoMessage.type,
-              })
-
-              await autoReplyMessage.save()
-              console.log("Auto-reply saved to MongoDB")
-
-              // Send auto-reply to all clients
-              clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                  client.send(JSON.stringify(autoMessage))
-                }
-              })
-            } catch (error) {
-              console.error("Error saving auto-reply:", error)
+            const postData = JSON.stringify(pushData)
+            const options = {
+              hostname: 'localhost',
+              port: 443,
+              path: '/api/push/send',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+              }
             }
           },
           1000 + Math.random() * 2000,
