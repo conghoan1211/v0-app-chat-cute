@@ -6,8 +6,8 @@
     "build": "next build",
     "dev": "node combined-server.js",
     "lint": "next lint",
-    "start": "NODE_ENV=production node combined-server.js",
-    "server:dev": "node combined-server.js"
+    "server:dev": "node combined-server.js",
+    "start": "NODE_ENV=production node combined-server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -65,6 +65,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "url": "latest",
     "utf-8-validate": "latest",
     "vaul": "^0.9.9",
     "ws": "latest",
