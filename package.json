@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "node combined-server.js",
     "lint": "next lint",
-    "start": "NODE_ENV=production node combined-server.js",
+    "start": "cross-env NODE_ENV=production node combined-server.js",
     "server:dev": "node combined-server.js"
   },
   "dependencies": {
@@ -78,6 +78,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/web-push": "^3.6.4",
+    "cross-env": "^10.0.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",

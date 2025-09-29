@@ -11,7 +11,6 @@ const Chat = require("./server/models/Chat")
 
 const dev = process.env.NODE_ENV !== "production"
 const port = parseInt(process.env.PORT || "3000", 10)
-const pushHandler = require("./app/api/push/send/route")
 
 async function start() {
     // Connect DB once
